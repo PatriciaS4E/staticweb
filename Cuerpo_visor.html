@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+
+<html>
+
+<head >
+
+
+
+  <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+ 
+
+  <title>Movilidad Sostenible - Viladecans</title>
+
+ 
+
+  <link rel="stylesheet" href="css/estilos.css" />
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.4.0/dist/socket.io.min.js"></script>
+
+
+ <script src="https://js.arcgis.com/4.26/"></script>
+
+</head>
+
+
+
+
+<body>
+
+
+
+
+
+  <div id="viewDiv"></div>
+
+
+
+
+  <script>
+
+    require([
+
+      "esri/config",
+
+      "esri/Map",
+
+      "esri/views/MapView",
+
+      "esri/widgets/LayerList",
+
+      "esri/layers/FeatureLayer",
+
+      "esri/layers/WebTileLayer",
+
+      "esri/layers/GeoJSONLayer",
+
+      "esri/widgets/ScaleBar",
+
+      "esri/views/SceneView",
+
+      "esri/widgets/Search",
+
+      "esri/layers/SceneLayer",
+
+      "esri/layers/GroupLayer",
+
+      "esri/geometry/Point",
+
+      "esri/layers/GraphicsLayer",
+
+      "esri/Graphic",
+
+      "esri/geometry/coordinateFormatter",
+
+      "esri/core/Accessor"
+
+
+
+
+
+    ], function (
+
+      esriConfig,
+
+      Map,
+
+      MapView,
+
+      LayerList,
+
+      FeatureLayer,
+
+      WebTileLayer,
+
+      GeoJSONLayer,
+
+      ScaleBar,
+
+      SceneView,
+
+      Search,
+
+      SceneLayer,
+
+      GroupLayer,
+
+      Point,
+
+      GraphicsLayer,
+
+      Graphic,
+
+      coordinateFormatter,
+
+      Accessor
+
+
+
+
+    ) {
+
+
+
+
+       
+
+
+
+
+
+      var appConfig = {
+
+        mapView: null,
+
+        sceneView: null,
+
+        activeView: null,
+
+        container: "viewDiv" // use same container for views
+
+      };
+
+
+
+
+
+      const map = new Map({
+
+        basemap: "satellite",
+
+      });
+
+
+
+
+      // Create a basic SceneView instance with a basemap and world elevation
+
+      const view = new SceneView({
+
+        // An instance of Map or WebScene
+
+
+
+
+
+        ground: "world-elevation",
+
+        map: map,
+
+        container: "viewDiv"
+
+      });
+
+
+
+
+
+
+      //funcionalidad Busqueda de lugares
+
+      const search = new Search({
+
+        view: view
+
+      });
+
+      view.ui.add(search, "top-right");
+
+
+
+
+      //funcionalidad Lista de capas
+
+      const listLayer = new LayerList({
+
+        view: view
+
+      });
+
+      view.ui.add(listLayer, { position: "top-right", });
+
+     
+
+      //Capa de tràfico
+
+     
+
+
+      const tomtomLayer = new WebTileLayer({
+
+           title: "Tráfico en tiempo real",
+
+           copyright: "Tom Tom Traffic",
+
+           urlTemplate: `https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=XeBAAN8bLdbqGAk6oNWUa6ZEFdbSdVoU`,
+
+         });
+
+
+
+
+
+         tomtomLayer.refreshInterval = 0.1;
+
+
+
+
+         listLayer.operationalItems.add(tomtomLayer);
+
+
+
+
+
+
+      //llamadas desde Arcgis
+
+
+
+
+      const layerCalles = new FeatureLayer
+
+                              ({
+
+                              title: "Calles",
+
+                              url: "https://services-eu1.arcgis.com/TE8fdnROPZDHTt0c/arcgis/rest/services/calles_paradas_y_limites_Castelldefels_WFL1/FeatureServer/1"
+
+                              });    
+
+     
+
+      const layerLimites = new FeatureLayer
+
+                              ({
+
+                              title: "Limites",
+
+                              url: "https://services-eu1.arcgis.com/TE8fdnROPZDHTt0c/arcgis/rest/services/calles_paradas_y_limites_Castelldefels_WFL1/FeatureServer/2"
+
+                              });    
+
+
+
+
+                        
+
+
+
+
+
+     
+
+// //Buses en tiempo Real
+
+
+
+
+    const graphicsLayer = new GraphicsLayer({
+
+       
+
+            title: "Buses en tiempo real"});
+
+     
+
+
+
+
+
+      function getColor(d) {
+
+
+
+
+        return d === "L95" ? '#33FF9C ' :
+
+
+
+
+                d === "L94" ? '#6833FF' :
+
+
+
+
+                d === "CF1" ? '#8B0000' :
+
+
+
+
+                d === "L96" ? '#F933FF' :
+
+
+
+
+                d === "L97" ? '#33FFD7 ' :
+
+
+
+
+                d === "L99" ? '#FF7033' :
+
+
+
+
+                d === "N14" ? '#33D0FF' :
+
+
+
+
+                d === "N16" ? '#40565D ' :
+
+
+
+
+                d === "N19" ? '#FFF033 ' :
+
+
+
+
+                d === "M5" ? '#f0411a ' :
+
+
+
+
+                d === "E95" ? '#B76CBB ' :
+
+
+
+
+                d === "E97" ? '#6CBB7B ' :
+
+
+
+
+                d === "CF2" ? '#BBBA6C ' :
+
+
+
+
+                d === "M8" ? '#0FF8F1 ' :
+
+
+
+
+                          false;
+
+
+
+
+      }
+
+
+
+
+
+      function estilo(element) {
+
+
+
+
+        return {
+
+
+
+
+          type: "simple-marker",
+
+          size: "3px",
+
+          fillColor: getColor(element),
+
+
+
+
+          outline: {
+
+
+
+
+            // autocasts as new SimpleLineSymbol()
+
+
+
+
+            color: getColor(element),
+
+
+
+
+            width: 2
+
+
+
+
+          }
+
+
+
+
+        };
+
+
+
+
+      }
+
+      var geojson = ["L95", "L94", "CF1", "L96", "L97", "L99", "N14", "N16", "N17", "M5","M8","E97","CF2", "E97" ,"E95" ];
+
+
+
+
+      var myHeaders = new Headers();
+
+      myHeaders.append("accept", "*/*");
+
+      myHeaders.append("x-api-key", "NMr4cMi5Jw5HtnVoysCCeaZQ5x13mWtQ8XuEVhPe");
+
+
+
+
+      var requestOptions = {
+
+        method: 'GET',
+
+        headers: myHeaders,
+
+        redirect: 'follow'
+
+      };
+
+
+
+
+   
+
+     
+
+      view.on('click', setInterval(function  bus(){
+
+       
+
+        graphicsLayer.removeAll()
+
+
+
+
+
+        fetch("https://api.ambmobilitat.cat/v2/bus/vehicles", requestOptions)
+
+          .then(response => response.json())
+
+          .then(function (result) {
+
+            console.log(result)
+
+
+
+
+            var flamb = result.filter(e => geojson.includes(e.line) == true)
+
+            console.log(flamb)
+
+           
+
+            flamb.forEach(element => {
+
+              if (element.line != null || element.line != NaN) {
+
+
+
+
+                var posicion = [parseFloat(element.latitude), parseFloat(element.longitude)];
+
+                var point = {
+
+                  type: "point",
+
+                  latitude: posicion[0],
+
+                  longitude: posicion[1],
+
+                  spatialReference: { wkid: 4326 }
+
+                }
+
+
+
+
+                const pointGraphic = new Graphic({
+
+                  geometry: point,
+
+                  symbol: estilo(element.line)
+
+                });
+
+                graphicsLayer.add(pointGraphic);
+
+
+
+
+              };
+
+             
+
+
+
+
+            })
+
+
+
+
+          })
+
+          .catch(error => console.log('error', error));
+
+
+
+
+       
+
+
+
+
+       }, 10000))  ;
+
+
+
+
+
+
+
+      const Grouplayer = new GroupLayer({
+
+                                       title: "Movilidad",
+
+                                       visible: true,
+
+                                       visibilityMode:"hidden",
+
+                                       layers: [graphicsLayer, layerCalles, layerLimites,tomtomLayer],
+
+                                       opacity: 0.8
+
+                                       });map.add(Grouplayer);      
+
+
+
+
+      clearInterval(Grouplayer);  
+
+
+
+
+    });
+
+
+
+
+
+
+
+
+  </script>
+
+
+
+
+
+
+
+
+</body>
+
+
+
+
+</html>
